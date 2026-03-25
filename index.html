@@ -812,12 +812,25 @@ async function doLogin() {
   const email = document.getElementById('loginEmail').value.trim();
   const pass = document.getElementById('loginPass').value;
   if(!email || !pass) { showAuthMsg('error','Completá todos los campos.'); return; }
+  showAuthMsg('success','Iniciando sesión...');
   try {
     const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
-    if(error) throw error;
+    if(error) {
+      if(error.message.includes('Email not confirmed')) {
+        showAuthMsg('error','Confirmá tu correo electrónico primero. Revisá tu bandeja de entrada.');
+      } else if(error.message.includes('Invalid login')) {
+        showAuthMsg('error','Correo o contraseña incorrectos.');
+      } else {
+        showAuthMsg('error', error.message);
+      }
+      return;
+    }
     currentUser = data.user;
+    showAuthMsg('success','✅ Verificando membresía...');
     await checkMembership();
-  } catch(e) { showAuthMsg('error', e.message || 'Error al iniciar sesión.'); }
+  } catch(e) {
+    showAuthMsg('error', 'Error de conexión: ' + (e.message || 'Intentá de nuevo'));
+  }
 }
 
 async function doRegister() {
@@ -833,6 +846,12 @@ async function doRegister() {
     const monto = selectedPlanVal === 'trimestral' ? 13000 : 5000;
     await sb.from('subscriptions').insert({ user_id: data.user.id, email, nombre: name, plan: selectedPlanVal, estado: 'pendiente', monto });
     currentUser = data.user;
+    // Check if email confirmation required
+    if(!data.session) {
+      showAuthMsg('success','✅ Cuenta creada. Revisá tu correo para confirmar, luego iniciá sesión.');
+      switchAuthTab('login');
+      return;
+    }
     showFsPending(name, email);
   } catch(e) { showAuthMsg('error', e.message || 'Error al registrarse.'); }
 }
@@ -857,7 +876,9 @@ async function doLogout() {
 // MEMBERSHIP CHECK
 // ══════════════════════════════════
 async function checkMembership() {
-  const { data: sub } = await sb.from('subscriptions').select('*').eq('user_id', currentUser.id).single();
+  try {
+  const { data: sub, error: subErr } = await sb.from('subscriptions').select('*').eq('user_id', currentUser.id).single();
+  if(subErr && subErr.code !== 'PGRST116') { showAuthMsg('error','Error al verificar membresía: '+subErr.message); goTo('s-auth'); return; }
   if(!sub) { showFsExpired(); return; }
   if(sub.estado === 'pendiente') { showFsPending(sub.nombre, sub.email); return; }
   if(sub.estado !== 'activo') { showFsExpired(); return; }
@@ -872,6 +893,10 @@ async function checkMembership() {
   if(!prof || !prof.onboarding_done) { goTo('s-onboarding'); return; }
   userProfile = prof;
   goTo('s-dashboard');
+  } catch(e) {
+    showAuthMsg('error','Error al verificar cuenta: '+e.message);
+    goTo('s-auth');
+  }
 }
 
 function showFsPending(nombre, email) {
@@ -1046,7 +1071,9 @@ async function loadDashboard() {
 
 function saveApiKey() {
   const k = document.getElementById('apiKeyInput').value.trim();
-  if(k) { localStorage.setItem('cs_apikey', k); toast('API key guardada ✓'); }
+  if(!k) { toast('⚠️ Ingresá la API key primero'); return; }
+  localStorage.setItem('cs_apikey', k);
+  toast('✅ API key guardada correctamente');
 }
 
 // ══════════════════════════════════
@@ -1085,8 +1112,8 @@ function resetFood() {
 }
 
 async function analyzeFood() {
-  const apiKey = localStorage.getItem('cs_apikey');
-  if(!apiKey) { document.getElementById('food_error').textContent='⚠️ Necesitás ingresar tu Claude API Key en el Dashboard.'; document.getElementById('food_error').classList.add('visible'); return; }
+  const apiKey = localStorage.getItem('cs_apikey') || document.getElementById('apiKeyInput')?.value?.trim();
+  if(!apiKey) { document.getElementById('food_error').textContent='⚠️ Necesitás guardar tu Claude API Key en el Dashboard (sección Inicio).'; document.getElementById('food_error').classList.add('visible'); return; }
   document.getElementById('food_error').classList.remove('visible');
   document.getElementById('food_analyze_btn').disabled = true;
   document.getElementById('food_analyzing').style.display = 'block';
@@ -1098,9 +1125,14 @@ async function analyzeFood() {
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
       body: JSON.stringify({
-        model:'claude-sonnet-4-20250514',
+        model:'claude-haiku-4-5-20251001',
         max_tokens:1000,
         messages:[{role:'user',content:[
           {type:'image',source:{type:'base64',media_type:foodFile.type||'image/jpeg',data:foodBase64}},
@@ -1108,7 +1140,7 @@ async function analyzeFood() {
         ]}]
       })
     });
-    if(!res.ok) { const e=await res.json(); throw new Error(e.error?.message||'Error API'); }
+    if(!res.ok) { const e=await res.json(); throw new Error(e.error?.message||'Error API: '+res.status); }
     const data = await res.json();
     const raw = data.content.map(b=>b.text||'').join('').trim();
     const result = JSON.parse(raw.replace(/```json|```/g,'').trim());
@@ -1505,10 +1537,15 @@ JSON: {"status":"bien|lento|rapido","titulo":"3-5 palabras motivadoras","subtitu
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1000, messages:[{role:'user',content:prompt}] })
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body: JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:1000, messages:[{role:'user',content:prompt}] })
     });
-    if(!res.ok) { const e=await res.json(); throw new Error(e.error?.message||'Error API'); }
+    if(!res.ok) { const e=await res.json(); throw new Error(e.error?.message||'Error API: '+res.status); }
     const data = await res.json();
     const raw = data.content.map(b=>b.text||'').join('').trim();
     const r = JSON.parse(raw.replace(/```json|```/g,'').trim());
@@ -1586,7 +1623,7 @@ async function applyCheckinAdj(newCal) {
 function waConfirm() {
   const u = window._pendingUser || {};
   const planLabel = u.plan === 'trimestral' ? 'Trimestral ₡13,000' : 'Mensual ₡5,000';
-  const msg = encodeURIComponent(`Hola! Me registré en Personal Trainer Ciro Sport 💪\n\n📧 Correo: ${u.email||currentUser?.email||'—'}\n📋 Plan: ${planLabel}\n\nAdjunto comprobante SINPE. Por favor activar mi acceso. ¡Gracias!`);
+  const msg = encodeURIComponent(`Hola! Me registré en Personal Trainer Ciro Sport 💪\n\n👤 Nombre: ${u.nombre||'—'}\n📧 Correo registrado: ${u.email||currentUser?.email||'—'}\n📋 Plan elegido: ${planLabel}\n\nAdjunto comprobante de pago SINPE. Por favor activar mi acceso. ¡Gracias!`);
   window.open(`https://wa.me/${WA_NUM}?text=${msg}`, '_blank');
 }
 
