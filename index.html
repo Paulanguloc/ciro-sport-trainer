@@ -24,6 +24,7 @@ body::before{content:'';position:fixed;top:-100px;left:50%;transform:translateX(
 /* SCREENS */
 .screen{display:none;min-height:100vh;position:relative;z-index:1;padding-bottom:90px;}
 .screen.active{display:block;animation:fadeUp .3s ease both;}
+#s-auth.active{display:flex;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
 
 /* LAYOUT */
@@ -208,7 +209,7 @@ body::before{content:'';position:fixed;top:-100px;left:50%;transform:translateX(
 <!-- ════════════════════════════
   SCREEN: AUTH
 ════════════════════════════ -->
-<div class="screen active" id="s-auth" style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;padding-bottom:24px;">
+<div class="screen active" id="s-auth" style="align-items:center;justify-content:center;min-height:100vh;padding:24px;padding-bottom:24px;">
   <div style="width:100%;max-width:400px;">
     <!-- LOGO -->
     <div style="text-align:center;margin-bottom:28px;">
@@ -767,8 +768,17 @@ window.onload = async () => {
 // NAVIGATION
 // ══════════════════════════════════
 function goTo(screenId) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(screenId).classList.add('active');
+  document.querySelectorAll('.screen').forEach(s => {
+    s.classList.remove('active');
+    s.style.display = 'none';
+  });
+  const target = document.getElementById(screenId);
+  // Auth screen needs flex, others block
+  target.style.display = screenId === 's-auth' ? 'flex' : 'block';
+  target.classList.add('active');
+  // Hide fullscreen overlays
+  document.getElementById('fs_pending').classList.remove('visible');
+  document.getElementById('fs_expired').classList.remove('visible');
 
   const mainScreens = ['s-dashboard','s-food','s-rutina','s-progreso','s-checkin'];
   const nav = document.getElementById('bottom_nav');
