@@ -877,25 +877,63 @@ async function doLogout() {
 // ══════════════════════════════════
 async function checkMembership() {
   try {
-  const { data: sub, error: subErr } = await sb.from('subscriptions').select('*').eq('user_id', currentUser.id).single();
-  if(subErr && subErr.code !== 'PGRST116') { showAuthMsg('error','Error al verificar membresía: '+subErr.message); goTo('s-auth'); return; }
-  if(!sub) { showFsExpired(); return; }
-  if(sub.estado === 'pendiente') { showFsPending(sub.nombre, sub.email); return; }
-  if(sub.estado !== 'activo') { showFsExpired(); return; }
-  const now = new Date();
-  const vence = new Date(sub.fecha_vencimiento);
-  if(now > vence) {
-    await sb.from('subscriptions').update({ estado:'vencido' }).eq('user_id', currentUser.id);
-    showFsExpired(); return;
-  }
-  // Cargar perfil
-  const { data: prof } = await sb.from('users').select('*').eq('id', currentUser.id).single();
-  if(!prof || !prof.onboarding_done) { goTo('s-onboarding'); return; }
-  userProfile = prof;
-  goTo('s-dashboard');
+    // Buscar suscripción — sin .single() para evitar error si hay varias
+    const { data: subs, error: subErr } = await sb.from('subscriptions')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .order('created_at', {ascending: false})
+      .limit(1);
+
+    if(subErr) {
+      // Si RLS bloquea, igual intentar cargar perfil
+      console.log('Sub error:', subErr.message);
+    }
+
+    const sub = subs && subs.length > 0 ? subs[0] : null;
+
+    if(!sub) {
+      // Sin suscripción — verificar si tiene perfil de usuario (admin/test)
+      const { data: prof } = await sb.from('users').select('*').eq('id', currentUser.id).single();
+      if(prof && prof.onboarding_done) {
+        userProfile = prof;
+        goTo('s-dashboard');
+        return;
+      }
+      showFsExpired();
+      return;
+    }
+
+    if(sub.estado === 'pendiente') { showFsPending(sub.nombre, sub.email); return; }
+
+    if(sub.estado === 'activo') {
+      const now = new Date();
+      const vence = sub.fecha_vencimiento ? new Date(sub.fecha_vencimiento) : null;
+      if(vence && now > vence) {
+        await sb.from('subscriptions').update({ estado:'vencido' }).eq('user_id', currentUser.id);
+        showFsExpired();
+        return;
+      }
+      // Acceso válido
+      const { data: prof } = await sb.from('users').select('*').eq('id', currentUser.id).single();
+      if(!prof || !prof.onboarding_done) { goTo('s-onboarding'); return; }
+      userProfile = prof;
+      goTo('s-dashboard');
+      return;
+    }
+
+    showFsExpired();
   } catch(e) {
-    showAuthMsg('error','Error al verificar cuenta: '+e.message);
-    goTo('s-auth');
+    console.log('checkMembership error:', e.message);
+    // En caso de error intentar entrar igual si tiene perfil
+    try {
+      const { data: prof } = await sb.from('users').select('*').eq('id', currentUser.id).single();
+      if(prof && prof.onboarding_done) {
+        userProfile = prof;
+        goTo('s-dashboard');
+        return;
+      }
+    } catch(e2) {}
+    showAuthMsg('error','Error: '+e.message);
   }
 }
 
