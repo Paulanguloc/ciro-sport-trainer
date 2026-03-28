@@ -382,9 +382,9 @@ body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;min-he
       <div class="card" style="cursor:pointer;text-align:center;" onclick="goTo('s-checkin')"><div style="font-size:28px;margin-bottom:4px;">🤖</div><div style="font-size:12px;font-weight:600;">Check-in IA</div><div style="font-size:10px;color:var(--text-dim);">Evaluar semana</div></div>
     </div>
     <div class="card" style="margin-bottom:12px;">
-      <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;font-weight:700;">🔑 Claude API Key (para IA)</div>
+      <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;font-weight:700;">🔑 Groq API Key (para IA)</div>
       <div style="display:flex;gap:8px;">
-        <input type="password" id="apiKeyInput" placeholder="sk-ant-api03-..." style="flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:9px 12px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;outline:none;">
+        <input type="password" id="apiKeyInput" placeholder="gsk_..." style="flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:9px 12px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;outline:none;">
         <button onclick="saveApiKey()" style="padding:9px 14px;border-radius:10px;border:1px solid rgba(255,107,43,.2);background:var(--orange-dim);color:var(--orange);font-family:'Sora',sans-serif;font-size:12px;font-weight:700;cursor:pointer;">Guardar</button>
       </div>
     </div>
@@ -697,8 +697,8 @@ function goTo(id) {
 // INIT
 // ══════════════════════════════════
 window.onload = async () => {
-  // Load saved API key
-  const k = localStorage.getItem('cs_apikey');
+  // Load saved API key (use hardcoded Groq key as default)
+  const k = localStorage.getItem('cs_apikey') || GROQ_KEY;
   if(k) document.getElementById('apiKeyInput').value = k;
 
   // Check existing session
@@ -976,6 +976,8 @@ async function loadDashboard() {
   if(k) document.getElementById('apiKeyInput').value=k;
 }
 
+const GROQ_KEY = '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';
+
 function saveApiKey(){
   const k=document.getElementById('apiKeyInput').value.trim();
   if(!k){toast('⚠️ Ingresá la API key');return;}
@@ -1015,26 +1017,37 @@ function resetFood(){
 }
 
 async function analyzeFood(){
-  const apiKey=localStorage.getItem('cs_apikey');
-  if(!apiKey){showFoodErr('Guardá tu Claude API Key en el Dashboard primero.');return;}
+  const apiKey=localStorage.getItem('cs_apikey') || GROQ_KEY;
+  if(!apiKey){showFoodErr('Necesitás una Groq API Key.');return;}
   document.getElementById('food_err').classList.remove('show');
   document.getElementById('food_btn').disabled=true;
   document.getElementById('food_loading').style.display='block';
   document.getElementById('food_results').style.display='none';
-  const prompt=`Eres nutricionista experto. Analiza la foto. Responde SOLO JSON sin texto extra ni backticks:
-{"total_calories":número,"macros":{"carbs":número,"protein":número,"fat":número},"foods":[{"name":"nombre español","emoji":"emoji","portion":"porción","calories":número,"confidence":"alta|media|baja"}],"note":"comentario 1-2 oraciones","meal_quality":"buena|regular|mejorar"}`;
+  const prompt=`Eres nutricionista experto. Analiza la foto de comida. Responde SOLO con JSON válido, sin texto extra ni backticks:
+{"total_calories":número,"macros":{"carbs":número,"protein":número,"fat":número},"foods":[{"name":"nombre en español","emoji":"emoji","portion":"descripción porción","calories":número,"confidence":"alta|media|baja"}],"note":"comentario nutricional 1-2 oraciones","meal_quality":"buena|regular|mejorar"}`;
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
+    // Usar Groq API con vision — permite CORS desde browser
+    const res=await fetch('https://api.groq.com/openai/v1/chat/completions',{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:1000,messages:[{role:'user',content:[
-        {type:'image',source:{type:'base64',media_type:foodFile.type||'image/jpeg',data:foodB64}},
-        {type:'text',text:prompt}
-      ]}]})
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':'Bearer '+apiKey
+      },
+      body:JSON.stringify({
+        model:'meta-llama/llama-4-scout-17b-16e-instruct',
+        max_tokens:1000,
+        messages:[{
+          role:'user',
+          content:[
+            {type:'image_url',image_url:{url:'data:'+(foodFile.type||'image/jpeg')+';base64,'+foodB64}},
+            {type:'text',text:prompt}
+          ]
+        }]
+      })
     });
     if(!res.ok){const e=await res.json();throw new Error(e.error?.message||'Error API '+res.status);}
     const data=await res.json();
-    const raw=data.content.map(b=>b.text||'').join('').trim();
+    const raw=data.choices[0].message.content.trim();
     foodResult=JSON.parse(raw.replace(/```json|```/g,'').trim());
     document.getElementById('food_loading').style.display='none';
     showFoodResults(foodResult);
@@ -1278,8 +1291,8 @@ function selCI(el,key,val,color){
 }
 
 async function runCheckin(){
-  const apiKey=localStorage.getItem('cs_apikey');
-  if(!apiKey){showMsg('ci_err','err','Necesitás la Claude API Key.');return;}
+  const apiKey=localStorage.getItem('cs_apikey') || GROQ_KEY;
+  if(!apiKey){showMsg('ci_err','err','Necesitás una Groq API Key.');return;}
   document.getElementById('ci_err').classList.remove('show');
   document.getElementById('ci_loading').style.display='block';
   document.getElementById('ci_result').innerHTML='';
@@ -1289,14 +1302,17 @@ async function runCheckin(){
 Datos: semana ${sem}, cambio peso: ${document.getElementById('ci_delta').textContent}, kcal prom: ${document.getElementById('ci_avg').textContent}, energía: ${ciAnswers.energia||'?'}, hambre: ${ciAnswers.hambre||'?'}, gym: ${ciAnswers.gym||'?'}, sueño: ${ciAnswers.sueno||'?'}, objetivo: ${userProfile?.objetivo||'perder'}, kcal objetivo: ${userProfile?.calorias_objetivo||2100}, notas: ${notes||'ninguna'}.
 JSON: {"status":"bien|lento|rapido","titulo":"3-5 palabras","subtitulo":"1 línea","analisis":"3-4 oraciones","ajuste_calorias":número,"nueva_calorias":número,"razon_ajuste":"1 oración","tips":["tip1","tip2","tip3"]}`;
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
+    const res=await fetch('https://api.groq.com/openai/v1/chat/completions',{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:1000,messages:[{role:'user',content:prompt}]})
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':'Bearer '+apiKey
+      },
+      body:JSON.stringify({model:'llama-3.3-70b-versatile',max_tokens:1000,messages:[{role:'user',content:prompt}]})
     });
     if(!res.ok){const e=await res.json();throw new Error(e.error?.message||'Error '+res.status);}
     const data=await res.json();
-    const raw=data.content.map(b=>b.text||'').join('').trim();
+    const raw=data.choices[0].message.content.trim();
     const r=JSON.parse(raw.replace(/```json|```/g,'').trim());
     await sb.from('checkins').insert({user_id:currentUser.id,semana_numero:sem,fecha:today(),energia:ciAnswers.energia,hambre:ciAnswers.hambre,rendimiento_gym:ciAnswers.gym,calidad_sueno:ciAnswers.sueno,notas_usuario:notes,status_ia:r.status,analisis_ia:r.analisis,ajuste_calorias:r.ajuste_calorias,calorias_nuevas:r.nueva_calorias,tips_ia:r.tips});
     document.getElementById('ci_loading').style.display='none';
