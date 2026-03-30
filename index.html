@@ -381,13 +381,7 @@ body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;min-he
       <div class="card" style="cursor:pointer;text-align:center;" onclick="goTo('s-progreso')"><div style="font-size:28px;margin-bottom:4px;">⚖️</div><div style="font-size:12px;font-weight:600;">Registrar peso</div><div style="font-size:10px;color:var(--text-dim);">Ver progreso</div></div>
       <div class="card" style="cursor:pointer;text-align:center;" onclick="goTo('s-checkin')"><div style="font-size:28px;margin-bottom:4px;">🤖</div><div style="font-size:12px;font-weight:600;">Check-in IA</div><div style="font-size:10px;color:var(--text-dim);">Evaluar semana</div></div>
     </div>
-    <div class="card" style="margin-bottom:12px;">
-      <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;font-weight:700;">🔑 Groq API Key (para IA)</div>
-      <div style="display:flex;gap:8px;">
-        <input type="password" id="apiKeyInput" placeholder="gsk_..." style="flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:9px 12px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;outline:none;">
-        <button onclick="saveApiKey()" style="padding:9px 14px;border-radius:10px;border:1px solid rgba(255,107,43,.2);background:var(--orange-dim);color:var(--orange);font-family:'Sora',sans-serif;font-size:12px;font-weight:700;cursor:pointer;">Guardar</button>
-      </div>
-    </div>
+    <input type="hidden" id="apiKeyInput" value="">
     <button onclick="doLogout()" style="width:100%;padding:11px;border-radius:12px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-family:'Sora',sans-serif;font-size:13px;font-weight:600;cursor:pointer;">Cerrar sesión</button>
   </div>
 </div>
@@ -460,7 +454,7 @@ body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;min-he
   <div class="page-header">
     <div class="back-btn" onclick="goTo('s-dashboard')">←</div>
     <div class="page-title">MI <span>RUTINA</span></div>
-    <div style="font-family:'JetBrains Mono',monospace;font-size:15px;color:var(--orange);" id="rt_timer">00:00</div>
+<div style="width:38px;"></div>
   </div>
   <div class="wrap">
     <div class="day-row" id="rt_days"></div>
@@ -470,7 +464,15 @@ body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;min-he
       <div class="card" style="text-align:center;padding:12px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--blue);" id="rt_vol">0</div><div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;">Vol kg</div></div>
     </div>
     <div id="rt_content"></div>
-    <button onclick="toggleTimer()" id="rt_timer_btn" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border2);background:var(--surface);color:var(--text-mid);font-family:'Sora',sans-serif;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:8px;">⏱ Iniciar cronómetro</button>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+      <button onclick="toggleTimer()" id="rt_timer_btn" style="flex:1;padding:12px;border-radius:12px;border:1px solid var(--border2);background:var(--surface);color:var(--text-mid);font-family:'Sora',sans-serif;font-size:13px;font-weight:600;cursor:pointer;">⏱ Iniciar</button>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 16px;font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--orange);letter-spacing:2px;min-width:90px;text-align:center;" id="rt_timer">00:00</div>
+    </div>
+    <button onclick="generateAIRoutine()" style="width:100%;padding:12px;border-radius:12px;border:1px solid rgba(77,159,255,.3);background:rgba(77,159,255,.1);color:var(--blue);font-family:'Sora',sans-serif;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px;">🤖 Generar rutina IA personalizada</button>
+    <div id="ai_routine_result" style="display:none;margin-bottom:8px;" class="card">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;margin-bottom:8px;color:var(--blue);">🤖 Rutina IA</div>
+      <div id="ai_routine_text" style="font-size:13px;color:var(--text-mid);line-height:1.7;"></div>
+    </div>
     <button onclick="finishWorkout()" style="width:100%;padding:14px;border-radius:14px;border:none;background:linear-gradient(135deg,var(--orange),#e85000);color:#000;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1.5px;cursor:pointer;box-shadow:0 6px 20px var(--orange-glow);">🏁 FINALIZAR ENTRENO</button>
   </div>
 </div>
@@ -612,35 +614,35 @@ const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov
 
 const PLAN = {
   1:{n:'Pecho + Tríceps',i:'🏋️',e:[
-    {n:'Press banca plano',s:4,r:10,w:70,t:'Baja 3s controlado'},
-    {n:'Press inclinado mancuernas',s:3,r:12,w:22,t:'Codos a 45°'},
-    {n:'Aperturas cable',s:3,r:15,w:15,t:'Contrae el pecho'},
-    {n:'Fondos paralelas',s:3,r:0,w:0,t:'Hasta fallo'},
-    {n:'Extensiones tríceps',s:3,r:15,w:20,t:'Codos pegados'}]},
+    {n:'Press banca plano',s:4,r:10,w:70,t:'Baja 3s controlado',yt:'https://www.youtube.com/results?search_query=press+banca+plano+tecnica'},
+    {n:'Press inclinado mancuernas',s:3,r:12,w:22,t:'Codos a 45°',yt:'https://www.youtube.com/results?search_query=press+inclinado+mancuernas+tecnica'},
+    {n:'Aperturas cable',s:3,r:15,w:15,t:'Contrae el pecho en el pico',yt:'https://www.youtube.com/results?search_query=aperturas+cable+pecho+tecnica'},
+    {n:'Fondos paralelas',s:3,r:0,w:0,t:'Inclínate adelante para pecho',yt:'https://www.youtube.com/results?search_query=fondos+paralelas+pecho+tecnica'},
+    {n:'Extensiones tríceps polea',s:3,r:15,w:20,t:'Codos pegados al cuerpo',yt:'https://www.youtube.com/results?search_query=extensiones+triceps+polea+tecnica'}]},
   2:{n:'Espalda + Bíceps',i:'💪',e:[
-    {n:'Peso muerto',s:4,r:6,w:100,t:'Espalda neutra'},
-    {n:'Dominadas',s:4,r:0,w:0,t:'Rango completo'},
-    {n:'Remo con barra',s:3,r:10,w:60,t:'Jala al ombligo'},
-    {n:'Curl bíceps',s:3,r:12,w:14,t:'Supina la muñeca'},
-    {n:'Curl martillo',s:3,r:12,w:12,t:'Trabaja el braquial'}]},
+    {n:'Peso muerto convencional',s:4,r:6,w:100,t:'Espalda neutra, empuja el suelo',yt:'https://www.youtube.com/results?search_query=peso+muerto+convencional+tecnica'},
+    {n:'Dominadas',s:4,r:0,w:0,t:'Rango completo, pecho al bar',yt:'https://www.youtube.com/results?search_query=dominadas+tecnica+correcta'},
+    {n:'Remo con barra',s:3,r:10,w:60,t:'Jala hacia el ombligo',yt:'https://www.youtube.com/results?search_query=remo+barra+espalda+tecnica'},
+    {n:'Curl bíceps mancuernas',s:3,r:12,w:14,t:'Supina la muñeca arriba',yt:'https://www.youtube.com/results?search_query=curl+biceps+mancuernas+tecnica'},
+    {n:'Curl martillo',s:3,r:12,w:12,t:'Trabaja el braquial',yt:'https://www.youtube.com/results?search_query=curl+martillo+biceps+tecnica'}]},
   3:{n:'Piernas',i:'🦵',e:[
-    {n:'Sentadilla trasera',s:4,r:8,w:80,t:'Profundidad paralela'},
-    {n:'Prensa de piernas',s:3,r:12,w:140,t:'No bloquees rodillas'},
-    {n:'Extensiones cuádriceps',s:3,r:15,w:50,t:'Contrae arriba'},
-    {n:'Curl femoral',s:3,r:12,w:40,t:'Caderas en banca'},
-    {n:'Pantorrillas',s:4,r:20,w:60,t:'Rango completo'}]},
+    {n:'Sentadilla trasera',s:4,r:8,w:80,t:'Profundidad paralela mínimo',yt:'https://www.youtube.com/results?search_query=sentadilla+trasera+tecnica+correcta'},
+    {n:'Prensa de piernas',s:3,r:12,w:140,t:'No bloquees las rodillas',yt:'https://www.youtube.com/results?search_query=prensa+piernas+tecnica'},
+    {n:'Extensiones cuádriceps',s:3,r:15,w:50,t:'Contrae fuerte arriba',yt:'https://www.youtube.com/results?search_query=extension+cuadriceps+maquina+tecnica'},
+    {n:'Curl femoral tumbado',s:3,r:12,w:40,t:'Caderas pegadas a la banca',yt:'https://www.youtube.com/results?search_query=curl+femoral+tumbado+tecnica'},
+    {n:'Pantorrillas de pie',s:4,r:20,w:60,t:'Rango completo, pausa arriba',yt:'https://www.youtube.com/results?search_query=pantorrillas+de+pie+tecnica'}]},
   4:{n:'Hombros',i:'🔱',e:[
-    {n:'Press militar',s:4,r:8,w:50,t:'Core apretado'},
-    {n:'Elevaciones laterales',s:4,r:15,w:8,t:'Pulgar hacia abajo'},
-    {n:'Face pulls',s:3,r:15,w:20,t:'Para manguito rotador'},
-    {n:'Press Arnold',s:3,r:12,w:18,t:'Rota las manos'}]},
+    {n:'Press militar barra',s:4,r:8,w:50,t:'Core apretado, no arquees',yt:'https://www.youtube.com/results?search_query=press+militar+barra+tecnica'},
+    {n:'Elevaciones laterales',s:4,r:15,w:8,t:'Pulgar hacia abajo',yt:'https://www.youtube.com/results?search_query=elevaciones+laterales+hombros+tecnica'},
+    {n:'Face pulls polea',s:3,r:15,w:20,t:'Excelente para manguito rotador',yt:'https://www.youtube.com/results?search_query=face+pulls+polea+tecnica'},
+    {n:'Press Arnold',s:3,r:12,w:18,t:'Rota las manos durante el movimiento',yt:'https://www.youtube.com/results?search_query=press+arnold+hombros+tecnica'}]},
   5:{n:'Descanso',i:'😴',e:[]},
   6:{n:'Full Body',i:'⚡',e:[
-    {n:'Sentadilla frontal',s:3,r:8,w:60,t:'Codos arriba'},
-    {n:'Press inclinado',s:3,r:10,w:55,t:''},
-    {n:'Remo unilateral',s:3,r:12,w:28,t:'Apoya rodilla'},
-    {n:'Hip thrust',s:3,r:15,w:80,t:'Aprieta glúteos'},
-    {n:'Plancha',s:3,r:0,w:0,t:'60 segundos'}]},
+    {n:'Sentadilla frontal',s:3,r:8,w:60,t:'Codos arriba, core firme',yt:'https://www.youtube.com/results?search_query=sentadilla+frontal+tecnica'},
+    {n:'Press inclinado barra',s:3,r:10,w:55,t:'Agarre medio, codos a 75°',yt:'https://www.youtube.com/results?search_query=press+inclinado+barra+tecnica'},
+    {n:'Remo unilateral mancuerna',s:3,r:12,w:28,t:'Apoya rodilla en banco',yt:'https://www.youtube.com/results?search_query=remo+unilateral+mancuerna+tecnica'},
+    {n:'Hip thrust',s:3,r:15,w:80,t:'Aprieta glúteos en la cima',yt:'https://www.youtube.com/results?search_query=hip+thrust+gluteos+tecnica'},
+    {n:'Plancha',s:3,r:0,w:0,t:'60 segundos por serie',yt:'https://www.youtube.com/results?search_query=plancha+abdominal+tecnica'}]},
   0:{n:'Descanso',i:'😴',e:[]}
 };
 
@@ -976,7 +978,7 @@ async function loadDashboard() {
   if(k) document.getElementById('apiKeyInput').value=k;
 }
 
-const GROQ_KEY = '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';
+const GROQ_KEY = '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';
 
 function saveApiKey(){
   const k=document.getElementById('apiKeyInput').value.trim();
@@ -1138,7 +1140,8 @@ function renderRutina(){
             <td style="text-align:center;padding:3px;"><div class="set-check ${rtSets[`${rtDay}_${i}_${s}`]?'done':''}" id="sc_${i}_${s}" onclick="toggleSet(${i},${s})">${rtSets[`${rtDay}_${i}_${s}`]?'✓':''}</div></td>
           </tr>`).join('')}
         </table>
-        <button onclick="completeEx(${i})" style="width:100%;margin-top:10px;padding:9px;border-radius:10px;border:1px solid rgba(0,214,143,.2);background:var(--green-dim);color:var(--green);font-family:'Sora',sans-serif;font-size:13px;font-weight:700;cursor:pointer;">✓ Ejercicio completo</button>
+        ${ex.yt?('<a href="'+ex.yt+'" target="_blank" style="display:block;width:100%;margin-top:8px;padding:8px;border-radius:10px;border:1px solid rgba(255,77,77,.3);background:rgba(255,0,0,.1);color:#ff4444;font-family:Sora,sans-serif;font-size:12px;font-weight:700;cursor:pointer;text-align:center;text-decoration:none;">▶ Ver video tutorial</a>'):''}
+        <button onclick="completeEx(${i})" style="width:100%;margin-top:8px;padding:9px;border-radius:10px;border:1px solid rgba(0,214,143,.2);background:var(--green-dim);color:var(--green);font-family:'Sora',sans-serif;font-size:13px;font-weight:700;cursor:pointer;">✓ Ejercicio completo</button>
       </div>
     </div>`;
   });
@@ -1185,6 +1188,34 @@ function toggleTimer(){
 }
 function updateTimerDisp(){const m=String(Math.floor(timerSecs/60)).padStart(2,'0');const s=String(timerSecs%60).padStart(2,'0');document.getElementById('rt_timer').textContent=`${m}:${s}`;}
 
+async function generateAIRoutine(){
+  const apiKey = GROQ_KEY;
+  const obj = userProfile?.objetivo || 'perder';
+  const objLabel = {perder:'pérdida de grasa',mantener:'mantenimiento',ganar:'ganancia muscular',definir:'definición'};
+  const prompt = `Soy coach fitness IA. El usuario quiere ${objLabel[obj]||obj}. Genera un plan de entrenamiento semanal de 4 días (Lunes, Martes, Jueves, Viernes) con 4-5 ejercicios por día. Incluye series, reps y peso sugerido. Formato claro y motivador. Responde en español, máximo 300 palabras.`;
+  const btn = event.target;
+  btn.textContent = '⏳ Generando...';
+  btn.disabled = true;
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
+      body:JSON.stringify({model:'llama-3.3-70b-versatile',max_tokens:600,messages:[{role:'user',content:prompt}]})
+    });
+    if(!res.ok) throw new Error('Error API');
+    const data = await res.json();
+    const text = data.choices[0].message.content;
+    document.getElementById('ai_routine_result').style.display='block';
+    document.getElementById('ai_routine_text').innerHTML = text.replace(/
+/g,'<br>');
+    document.getElementById('ai_routine_result').scrollIntoView({behavior:'smooth'});
+  } catch(e) {
+    toast('⚠️ Error generando rutina: '+e.message);
+  }
+  btn.textContent = '🤖 Generar rutina IA personalizada';
+  btn.disabled = false;
+}
+
 async function finishWorkout(){
   const p=PLAN[rtDay];
   if(p.e.length===0){toast('Es día de descanso 😴');return;}
@@ -1208,7 +1239,8 @@ async function loadProgreso(){
 async function logWeight(){
   const val=parseFloat(document.getElementById('prog_input').value);
   if(!val||val<30||val>250){toast('⚠️ Peso inválido');return;}
-  const {error}=await sb.from('weight_logs').upsert({user_id:currentUser.id,fecha:today(),peso:val});
+  await sb.from('weight_logs').delete().eq('user_id',currentUser.id).eq('fecha',today());
+  const {error}=await sb.from('weight_logs').insert({user_id:currentUser.id,fecha:today(),peso:val});
   if(error){toast('Error: '+error.message);return;}
   await sb.from('users').update({peso_actual:val}).eq('id',currentUser.id);
   if(userProfile) userProfile.peso_actual=val;
