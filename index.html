@@ -401,6 +401,66 @@ body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;min-he
       <div class="dchip" onclick="selMeal(this,'merienda')">🍎 Merienda</div>
       <div class="dchip" onclick="selMeal(this,'pre-entreno')">💪 Pre</div>
     </div>
+    <!-- DAILY CALORIE TRACKER -->
+    <div class="card" style="margin-bottom:14px;position:relative;overflow:hidden;">
+      <div style="position:absolute;top:-30px;right:-30px;width:100px;height:100px;background:var(--orange-dim);border-radius:50%;filter:blur(30px);"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:.5px;">Calorías de hoy</div>
+        <div id="food_estado_badge" style="padding:4px 10px;border-radius:100px;font-size:11px;font-weight:700;background:var(--green-dim);color:var(--green);border:1px solid rgba(0,214,143,.2);">⚡ Cargando...</div>
+      </div>
+      <!-- Anillo + números -->
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:14px;">
+        <div style="position:relative;width:90px;height:90px;flex-shrink:0;">
+          <svg viewBox="0 0 90 90" width="90" height="90" style="transform:rotate(-90deg);">
+            <circle cx="45" cy="45" r="36" fill="none" stroke="#1d2330" stroke-width="8"/>
+            <circle cx="45" cy="45" r="36" fill="none" stroke="#ff6b2b" stroke-width="8"
+              stroke-linecap="round" stroke-dasharray="226" id="food_ring" stroke-dashoffset="226"
+              style="transition:stroke-dashoffset .6s ease;"/>
+          </svg>
+          <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--orange);line-height:1;" id="food_pct_num">0%</div>
+          </div>
+        </div>
+        <div style="flex:1;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+            <div>
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--orange);line-height:1;" id="food_cal_consumidas">0</div>
+              <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;">consumidas</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--text-mid);line-height:1;" id="food_cal_restantes">0</div>
+              <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;">restantes</div>
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--text-dim);margin-bottom:6px;">Objetivo: <span style="color:var(--text);font-family:'JetBrains Mono',monospace;" id="food_cal_objetivo">0</span> kcal</div>
+        </div>
+      </div>
+      <!-- Barra de progreso -->
+      <div style="margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim);margin-bottom:6px;">
+          <span>0</span>
+          <span id="food_bar_label">0 / 0 kcal</span>
+          <span id="food_bar_goal_label">0</span>
+        </div>
+        <div style="height:10px;background:var(--surface2);border-radius:100px;overflow:hidden;position:relative;">
+          <div id="food_prog_bar" style="height:100%;background:linear-gradient(90deg,var(--orange),#ff8c5a);border-radius:100px;width:0%;transition:width .6s ease;"></div>
+          <div id="food_over_bar" style="display:none;position:absolute;top:0;right:0;height:100%;background:var(--red);border-radius:0 100px 100px 0;width:0%;transition:width .3s;"></div>
+        </div>
+      </div>
+      <!-- Macros del día -->
+      <div class="macro-row" style="margin-top:10px;">
+        <div class="mbox"><div class="mv" style="color:var(--blue);font-size:14px;" id="food_d_carbs">0g</div><div class="ml">Carbos</div></div>
+        <div class="mbox"><div class="mv" style="color:var(--orange);font-size:14px;" id="food_d_protein">0g</div><div class="ml">Proteína</div></div>
+        <div class="mbox"><div class="mv" style="color:var(--yellow);font-size:14px;" id="food_d_fat">0g</div><div class="ml">Grasas</div></div>
+      </div>
+    </div>
+
+    <!-- COMIDAS DE HOY -->
+    <div class="card" style="margin-bottom:14px;" id="food_today_card">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:.5px;margin-bottom:10px;">Comidas de hoy</div>
+      <div id="food_today_list"><div style="font-size:12px;color:var(--text-dim);text-align:center;padding:10px;">Sin registros hoy</div></div>
+    </div>
+
     <div id="food_zone" style="background:var(--surface);border:2px dashed var(--border2);border-radius:18px;padding:28px 16px;text-align:center;cursor:pointer;margin-bottom:12px;" onclick="document.getElementById('food_file').click()">
       <div style="font-size:44px;margin-bottom:8px;">📸</div>
       <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;margin-bottom:4px;">Foto de tu comida</div>
@@ -690,6 +750,7 @@ function goTo(id) {
   if(id === 's-checkin') loadCheckin();
   if(id === 's-food') {
     document.getElementById('food_cal_hoy').textContent = (todayLog?.calorias_consumidas || 0) + ' kcal';
+    loadFoodScreen();
   }
 
   window.scrollTo({top:0,behavior:'smooth'});
@@ -990,6 +1051,124 @@ function saveApiKey(){
 // ══════════════════════════════════
 // FOOD ANALYZER
 // ══════════════════════════════════
+async function loadFoodScreen(){
+  const goal = userProfile?.calorias_objetivo || 2100;
+  const protGoal = userProfile?.proteina_objetivo || 150;
+  const carbsGoal = userProfile?.carbos_objetivo || 200;
+  const fatGoal = userProfile?.grasas_objetivo || 60;
+
+  // Get today's log
+  const {data:dl} = await sb.from('daily_logs').select('*').eq('user_id',currentUser.id).eq('fecha',today()).maybeSingle();
+  todayLog = dl;
+  const consumed = dl?.calorias_consumidas || 0;
+  const protein = Math.round(dl?.proteina_consumida || 0);
+  const carbs = Math.round(dl?.carbos_consumidos || 0);
+  const fat = Math.round(dl?.grasas_consumidas || 0);
+  const remaining = goal - consumed;
+  const pct = Math.min(100, Math.round((consumed/goal)*100));
+
+  // Update ring
+  const circumference = 226;
+  document.getElementById('food_ring').setAttribute('stroke-dashoffset', circumference - (circumference * pct/100));
+
+  // Update numbers
+  document.getElementById('food_cal_consumidas').textContent = consumed;
+  document.getElementById('food_cal_restantes').textContent = Math.max(0, remaining);
+  document.getElementById('food_cal_objetivo').textContent = goal;
+  document.getElementById('food_pct_num').textContent = pct + '%';
+  document.getElementById('food_bar_label').textContent = consumed + ' / ' + goal + ' kcal';
+  document.getElementById('food_bar_goal_label').textContent = goal;
+  document.getElementById('food_d_carbs').textContent = carbs + 'g';
+  document.getElementById('food_d_protein').textContent = protein + 'g';
+  document.getElementById('food_d_fat').textContent = fat + 'g';
+  document.getElementById('food_cal_hoy').textContent = consumed + ' kcal';
+
+  // Progress bar
+  if(consumed <= goal) {
+    document.getElementById('food_prog_bar').style.width = pct + '%';
+    document.getElementById('food_over_bar').style.display = 'none';
+  } else {
+    document.getElementById('food_prog_bar').style.width = '100%';
+    document.getElementById('food_over_bar').style.display = 'block';
+    document.getElementById('food_over_bar').style.width = Math.min(20, ((consumed-goal)/goal)*100) + '%';
+  }
+
+  // Change ring color based on status
+  const ring = document.getElementById('food_ring');
+  if(pct >= 100) ring.setAttribute('stroke','#ff4d6d');
+  else if(pct >= 80) ring.setAttribute('stroke','#ffd166');
+  else ring.setAttribute('stroke','#ff6b2b');
+
+  // Status badge
+  const badge = document.getElementById('food_estado_badge');
+  const obj = userProfile?.objetivo || 'perder';
+  if(pct >= 100) {
+    badge.textContent = '🚨 Superaste el objetivo';
+    badge.style.background = 'var(--red-dim)';
+    badge.style.color = 'var(--red)';
+    badge.style.borderColor = 'rgba(255,77,109,.2)';
+  } else if(obj === 'perder' || obj === 'definir') {
+    if(remaining > 500) {
+      badge.textContent = '✅ En déficit — vas bien';
+      badge.style.background = 'var(--green-dim)';
+      badge.style.color = 'var(--green)';
+      badge.style.borderColor = 'rgba(0,214,143,.2)';
+    } else if(remaining > 0) {
+      badge.textContent = '⚡ Casi en el límite';
+      badge.style.background = 'var(--yellow-dim)';
+      badge.style.color = 'var(--yellow)';
+      badge.style.borderColor = 'rgba(255,209,102,.2)';
+    } else {
+      badge.textContent = '⚠️ Superaste el límite';
+      badge.style.background = 'var(--red-dim)';
+      badge.style.color = 'var(--red)';
+      badge.style.borderColor = 'rgba(255,77,109,.2)';
+    }
+  } else if(obj === 'ganar') {
+    if(consumed >= goal) {
+      badge.textContent = '💪 Superávit logrado';
+      badge.style.background = 'var(--blue-dim,rgba(77,159,255,.1))';
+      badge.style.color = 'var(--blue)';
+      badge.style.borderColor = 'rgba(77,159,255,.2)';
+    } else {
+      badge.textContent = '📈 Necesitás comer más';
+      badge.style.background = 'var(--yellow-dim)';
+      badge.style.color = 'var(--yellow)';
+      badge.style.borderColor = 'rgba(255,209,102,.2)';
+    }
+  } else {
+    badge.textContent = '⚖️ En mantenimiento';
+    badge.style.background = 'var(--orange-dim)';
+    badge.style.color = 'var(--orange)';
+    badge.style.borderColor = 'rgba(255,107,43,.2)';
+  }
+
+  // Load today's meals
+  const {data:meals} = await sb.from('food_entries')
+    .select('*')
+    .eq('user_id',currentUser.id)
+    .eq('fecha',today())
+    .order('created_at',{ascending:false});
+
+  const list = document.getElementById('food_today_list');
+  if(!meals || meals.length === 0) {
+    list.innerHTML = '<div style="font-size:12px;color:var(--text-dim);text-align:center;padding:10px;">Sin registros hoy</div>';
+  } else {
+    const mealLabels = {desayuno:'🌅 Desayuno',almuerzo:'☀️ Almuerzo',cena:'🌙 Cena',merienda:'🍎 Merienda','pre-entreno':'💪 Pre-entreno','post-entreno':'🥛 Post-entreno'};
+    list.innerHTML = meals.map(m => {
+      const foods = Array.isArray(m.alimentos) ? m.alimentos.slice(0,2).map(f=>f.name).join(', ') : '';
+      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">' +
+        '<div style="font-size:11px;color:var(--orange);font-weight:700;min-width:70px;">' + (mealLabels[m.tipo_comida]||m.tipo_comida||'Comida') + '</div>' +
+        '<div style="flex:1;font-size:12px;color:var(--text-mid);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + foods + '</div>' +
+        '<div style="font-family:JetBrains Mono,monospace;font-size:13px;color:var(--orange);flex-shrink:0;">' + m.calorias_total + ' kcal</div>' +
+        '</div>';
+    }).join('') + '<div style="display:flex;justify-content:space-between;padding:8px 0;margin-top:4px;">' +
+      '<div style="font-size:12px;font-weight:700;">Total</div>' +
+      '<div style="font-family:JetBrains Mono,monospace;font-size:13px;color:var(--orange);font-weight:700;">' + consumed + ' kcal</div>' +
+      '</div>';
+  }
+}
+
 function selMeal(el,m){document.querySelectorAll('#s-food .dchip').forEach(c=>c.classList.remove('active'));el.classList.add('active');mealType=m;}
 
 function handleFoodFile(input){
@@ -1093,6 +1272,7 @@ async function saveMeal(){
   await sb.from('daily_logs').upsert({user_id:currentUser.id,fecha:today(),calorias_consumidas:prev+r.total_calories,calorias_objetivo:userProfile?.calorias_objetivo||2100,proteina_consumida:(todayLog?.proteina_consumida||0)+r.macros.protein,carbos_consumidos:(todayLog?.carbos_consumidos||0)+r.macros.carbs,grasas_consumidas:(todayLog?.grasas_consumidas||0)+r.macros.fat});
   toast('✅ '+r.total_calories+' kcal registradas');
   resetFood();
+  await loadFoodScreen();
   goTo('s-dashboard');
 }
 
