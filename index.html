@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+9<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -202,7 +202,7 @@ body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;min-he
     <div id="formLogin">
       <div class="field"><label class="field-label">Correo electrónico</label><input class="fi" type="email" id="loginEmail" placeholder="tu@correo.com" autocomplete="email"></div>
       <div class="field"><label class="field-label">Contraseña</label><input class="fi" type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password"></div>
-  <button class="btn-p" onclick="doLogin()">ENTRAR</button>
+      <button class="btn-p" onclick="alert('JS OK - llamando login...'); doLogin()">ENTRAR</button>
       <div style="text-align:center;font-size:12px;color:var(--orange);margin-top:12px;cursor:pointer;" onclick="forgotPass()">¿Olvidaste tu contraseña?</div>
     </div>
 
@@ -793,20 +793,27 @@ function selPlan(p, el) {
 async function doLogin() {
   const email = document.getElementById('loginEmail').value.trim();
   const pass = document.getElementById('loginPass').value;
-  if(!email || !pass) { showAuthMsg('err','Completá todos los campos.'); return; }
-  alert('Iniciando...'); showAuthMsg('ok','Iniciando sesión...');
+  
+  // Show feedback directly in button
+  const btn = document.querySelector('#formLogin .btn-p');
+  if(btn) { btn.textContent = 'ENTRANDO...'; btn.disabled = true; }
+  
   try {
     const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+    
     if(error) {
-      if(error.message.includes('Invalid login')) showAuthMsg('err','Correo o contraseña incorrectos.');
-      else showAuthMsg('err', error.message);
+      alert('Error: ' + error.message);
+      if(btn) { btn.textContent = 'ENTRAR'; btn.disabled = false; }
       return;
     }
+    
     currentUser = data.user;
-    showAuthMsg('ok','✅ Verificando membresía...');
+    if(btn) btn.textContent = 'VERIFICANDO...';
     await checkMembership();
+    
   } catch(e) {
-    showAuthMsg('err','Error de conexión: ' + e.message);
+    alert('Error de conexión: ' + e.message);
+    if(btn) { btn.textContent = 'ENTRAR'; btn.disabled = false; }
   }
 }
 
