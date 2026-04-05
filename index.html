@@ -798,8 +798,9 @@ async function doLogin() {
   const btn = document.querySelector('#formLogin .btn-p');
   if(btn) { btn.textContent = 'ENTRANDO...'; btn.disabled = true; }
   
-  try {
-    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  try{
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+alert('Respuesta: ' + (error ? error.message : 'OK user=' + data.user?.email));
     
     if(error) {
       alert('Error: ' + error.message);
